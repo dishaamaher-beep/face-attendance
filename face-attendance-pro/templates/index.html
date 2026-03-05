@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>نظام الحضور</title>
+<style>
+body{background:#0f172a;color:white;text-align:center;font-family:Arial}
+video{width:60%;border-radius:20px;margin-top:20px}
+button{padding:10px 20px;margin:10px;border:none;border-radius:8px;background:#2563eb;color:white;cursor:pointer}
+#result{margin-top:15px;font-weight:bold}
+#fileInput{display:none;margin-top:10px}
+</style>
+</head>
+<body>
+
+<h1>نظام بصمة الوجه - شركة فهد على بن كليب للمقاولات</h1>
+
+<video id="video" autoplay></video><br>
+<button onclick="startCamera()">فتح الكاميرا</button>
+<button onclick="capture()">تسجيل الحضور بالكاميرا</button><br>
+<button onclick="document.getElementById('fileInput').click()">رفع صورة احتياطية</button>
+<input type="file" id="fileInput" accept="image/*">
+
+<div id="result"></div>
+
+<script>
+let stream;
+
+// ----------- فتح الكاميرا -----------
+async function startCamera(){
+    try{
+        stream = await navigator.mediaDevices.getUserMedia({video:true});
+        document.getElementById('video').srcObject = stream;
+        document.getElementById("result").innerHTML="<span style='color:lightgreen'>✅ الكاميرا جاهزة</span>";
+    }catch(e){
+        document.getElementById("result").innerHTML="<span style='color:orange'>⚠️ لا توجد كاميرا متاحة، يمكنك رفع صورة بدلاً من ذلك</span>";
+    }
+}
+
+// ----------- التقاط صورة من الكاميرا -----------
+function capture(){
+    if(!stream){
+        document.getElementById("result").innerHTML="<span style='color:red'>❌ افتح الكاميرا أولاً</span>";
+        return;
+    }
+
+    const video = document.getElementById('video');
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = video.videoHeight / (video.videoWidth/640);
+    canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
+
+    canvas.toBlob(async(blob)=>{
+        await sendFile(blob);
+    }, 'image/jpeg');
+}
+
+// ----------- رفع صورة احتياطية -----------
+document.getElementById('fileInput').addEventListener('change', async function(){
+    if(this.files.length > 0){
+        const file = this.files[0];
+        await sendFile(file);
+    }
+});
+
+// ----------- إرسال الصورة للسيرفر -----------
+async function sendFile(file){
+    const formData = new FormData();
+    formData.append('file', file, 'capture.jpg');
+
+    try{
+        const response = await fetch('/attendance',{method:'POST',body:formData});
+        const result = await response.json();
+
+        if(result.status=="success"){
+            document.getElementById("result").innerHTML="<span style='color:green'>✅ تم تسجيل حضور "+result.name+"</span>";
+        }else if(result.status=="already"){
+            document.getElementById("result").innerHTML="<span style='color:orange'>⚠️ تم تسجيل حضورك بالفعل اليوم</span>";
+        }else if(result.status=="error"){
+            document.getElementById("result").innerHTML="<span style='color:red'>❌ "+result.message+"</span>";
+        }
+    }catch(e){
+        document.getElementById("result").innerHTML="<span style='color:red'>❌ حدث خطأ أثناء الاتصال بالسيرفر</span>";
+    }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>لوحة التحكم - Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<h2>لوحة التحكم</h2>
+
+<button onclick="window.location.href='/export'">تحميل Excel</button>
+
+<h3>سجل الحضور</h3>
+
+<table border="1">
+    <tr>
+        <th>الاسم</th>
+        <th>التاريخ</th>
+        <th>الوقت</th>
+        <th>الحالة</th>
+        <th>صورة الحضور</th>
+    </tr>
+    {% for row in data %}
+    <tr>
+        <td>{{ row[1] }}</td>
+        <td>{{ row[2] }}</td>
+        <td>{{ row[3] }}</td>
+        <td>{{ row[4] }}</td>
+        <td>
+            {% if row[5] %}
+                <img src="/attendance_photos/{{ row[5].split('/')[-1] }}" width="50">
+            {% else %}
+                -
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h3>الرسم البياني</h3>
+<canvas id="chart"></canvas>
+
+<script>
+async function loadChart() {
+    try {
+        const response = await fetch('/stats');
+        const data = await response.json();
+        const dates = data.map(i => i[0]);
+        const counts = data.map(i => i[1]);
+        new Chart(document.getElementById('chart'), {
+            type: 'bar',
+            data: {
+                labels: dates,
+                datasets: [{
+                    label: 'الحضور يوميًا',
+                    data: counts,
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: true },
+                    title: { display: true, text: 'عدد الحضور يوميًا' }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('حدث خطأ في تحميل البيانات:', error);
+    }
+}
+
+loadChart();
+</script>
+
+</body>
+</html>
